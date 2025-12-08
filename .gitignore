@@ -42,6 +42,10 @@ yarn-error.log*
 # worker
 worker/node_modules
 worker/.wrangler
+worker/migrations/
+
+# magic file
+magic.mgc
 
 # typescript
 *.tsbuildinfo
