@@ -9,6 +9,14 @@ export function generateUUID(): string {
   return crypto.randomUUID();
 }
 
+// Generate readable image ID: YYYYMMDD-XXXXXXXX (date + 8 random chars)
+export function generateImageId(): string {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10).replace(/-/g, ''); // YYYYMMDD
+  const random = crypto.randomUUID().slice(0, 8); // 8位随机字符
+  return `${date}-${random}`;
+}
+
 export function sanitizeTagName(tag: string): string {
   return tag
     .toLowerCase()

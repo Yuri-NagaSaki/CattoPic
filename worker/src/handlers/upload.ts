@@ -5,7 +5,7 @@ import { MetadataService } from '../services/metadata';
 import { ImageProcessor } from '../services/imageProcessor';
 import { CompressionService, parseCompressionOptions } from '../services/compression';
 import { successResponse, errorResponse } from '../utils/response';
-import { generateUUID, parseTags, parseNumber } from '../utils/validation';
+import { generateImageId, parseTags, parseNumber } from '../utils/validation';
 
 const MAX_UPLOAD_COUNT = 20;
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -72,7 +72,7 @@ export async function uploadHandler(c: Context<{ Bindings: Env }>): Promise<Resp
         }
 
         // Generate unique ID and paths
-        const id = generateUUID();
+        const id = generateImageId();
         const paths = StorageService.generatePaths(id, imageInfo.orientation, imageInfo.format);
 
         // Upload original file
