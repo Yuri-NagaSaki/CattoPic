@@ -58,7 +58,7 @@ function UrlItem({ title, url, icon, iconColor, copyType, copyStatus, onCopy }: 
           
           <button
             onClick={() => onCopy(url, copyType)}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-sm transition-colors"
             title="复制链接"
           >
             {copyStatus && copyStatus.type === copyType ? (

@@ -92,7 +92,7 @@ export default function ImageSidebar({
             className="fixed top-0 right-0 w-full sm:w-96 h-full bg-white dark:bg-slate-900 shadow-xl z-30 border-l border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col"
           >
             {/* 侧边栏头部 */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700 bg-linear-to-r from-indigo-500 to-purple-600 text-white">
               <h2 className="text-lg font-semibold flex items-center">
                 <ImageIcon className="h-5 w-5 mr-2 text-white opacity-90" />
                 上传结果 ({results.length})
@@ -185,7 +185,7 @@ export default function ImageSidebar({
                           result.status === "success"
                             ? "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                             : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20"
-                        } shadow-sm hover:shadow-md transition-all cursor-pointer group`}
+                        } shadow-xs hover:shadow-md transition-all cursor-pointer group`}
                         onClick={() =>
                           result.status === "success" &&
                           handleImageClick(result)
@@ -203,7 +203,7 @@ export default function ImageSidebar({
                                   sizes="(max-width: 768px) 50vw, 33vw"
                                 />
                               )}
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                              <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                               <div className="absolute top-1 right-1">
                                 <span className="text-xs px-1.5 py-0.5 bg-green-500/80 text-white rounded-full">
                                   完成
@@ -218,7 +218,7 @@ export default function ImageSidebar({
                                 </p>
                                 {result.expiryTime && (
                                   <p className="text-xs mt-1">
-                                    <span className="bg-yellow-500/80 text-white px-1 py-0.5 rounded text-[10px]">
+                                    <span className="bg-yellow-500/80 text-white px-1 py-0.5 rounded-sm text-[10px]">
                                       过期时间:{" "}
                                       {new Date(
                                         result.expiryTime
@@ -232,7 +232,7 @@ export default function ImageSidebar({
                         ) : (
                           <div className="p-3 h-full flex flex-col">
                             <div className="flex items-start space-x-2">
-                              <ExclamationTriangleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                              <ExclamationTriangleIcon className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
                               <div>
                                 <p className="font-medium text-sm text-red-600 dark:text-red-400">
                                   {result.originalName || '上传失败'}
@@ -269,7 +269,7 @@ export default function ImageSidebar({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-sm z-20 sm:block hidden"
+            className="fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-xs z-20 sm:block hidden"
             onClick={onClose}
           />
         )}

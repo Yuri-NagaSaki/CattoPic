@@ -65,7 +65,7 @@ export default function TagSelector({ selectedTags, availableTags, onTagsChange,
           <select
             onChange={handleTagChange}
             value=""
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-sm"
+            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-xs"
           >
             <option value="">选择标签...</option>
             {availableTags
@@ -82,12 +82,12 @@ export default function TagSelector({ selectedTags, availableTags, onTagsChange,
               onChange={handleTagInput}
               onKeyDown={handleKeyDown}
               placeholder="自定义标签"
-              className="px-3 py-2 rounded-l-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-sm"
+              className="px-3 py-2 rounded-l-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-xs"
             />
             <button
               type="button"
               onClick={handleAddTag}
-              className="px-3 py-2 rounded-r-lg bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium transition-colors duration-200 text-sm flex items-center"
+              className="px-3 py-2 rounded-r-lg bg-linear-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-medium transition-colors duration-200 text-sm flex items-center"
             >
               <PlusIcon className="h-4 w-4" />
             </button>
@@ -100,7 +100,7 @@ export default function TagSelector({ selectedTags, availableTags, onTagsChange,
           {selectedTags.map(tag => (
             <div
               key={tag}
-              className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center shadow-sm"
+              className="bg-linear-to-r from-indigo-500 to-purple-500 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center shadow-xs"
             >
               <span>{tag}</span>
               <button

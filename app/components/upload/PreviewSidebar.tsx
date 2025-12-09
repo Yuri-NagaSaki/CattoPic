@@ -104,7 +104,7 @@ export default function PreviewSidebar({
                     transition={{ delay: index * 0.05 }}
                     className="group flex items-center p-3 bg-slate-200/50 dark:bg-slate-700/30 rounded-lg border border-slate-300/30 dark:border-slate-600/30 hover:bg-slate-200/80 dark:hover:bg-slate-700/50 transition-all duration-200"
                   >
-                    <div className="flex-shrink-0 mr-3">
+                    <div className="shrink-0 mr-3">
                       <div className="w-12 h-12 flex items-center justify-center overflow-hidden bg-indigo-100 dark:bg-indigo-900/20 rounded-lg">
                         <ImageIcon className="h-8 w-8 text-indigo-400" />
                       </div>
@@ -126,7 +126,7 @@ export default function PreviewSidebar({
                     </div>
                     <button
                       onClick={() => onRemoveFile(file.id)}
-                      className="flex-shrink-0 p-2 rounded-full text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="shrink-0 p-2 rounded-full text-slate-400 hover:text-red-500 dark:text-slate-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>

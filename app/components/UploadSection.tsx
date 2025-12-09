@@ -181,9 +181,9 @@ export default function UploadSection({
           />
 
           {exceedsLimit && (
-            <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 shadow-sm">
+            <div className="mb-6 p-4 rounded-xl bg-linear-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border border-amber-200 dark:border-amber-800 shadow-xs">
               <div className="flex items-start">
-                <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-full mr-3 flex-shrink-0">
+                <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-full mr-3 shrink-0">
                   <ExclamationTriangleIcon className="h-5 w-5 text-amber-500" />
                 </div>
                 <div>

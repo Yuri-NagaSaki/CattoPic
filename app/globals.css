@@ -1,32 +1,131 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-body {
-    font-family: Inter, "Noto Sans SC", system-ui, -apple-system, sans-serif;
-    font-weight: 700;
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-light-bg-primary: #f8fafc;
+  --color-light-bg-secondary: #ffffff;
+
+  --color-light-text-primary: #1e293b;
+  --color-light-text-secondary: #64748b;
+
+  --color-light-border: #e2e8f0;
+  --color-light-hover: #f1f5f9;
+
+  --color-dark-bg-primary: #0f172a;
+  --color-dark-bg-secondary: #1e293b;
+
+  --color-dark-text-primary: #f1f5f9;
+  --color-dark-text-secondary: #94a3b8;
+
+  --color-dark-border: #334155;
+  --color-dark-hover: #334155;
+
+  --background-image-gradient-primary: linear-gradient(
+    135deg,
+    #6366f1,
+    #8b5cf6
+  );
+
+  --animate-slide-in-right: slideInRight 0.3s ease-out;
+
+  @keyframes slideInRight {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0);
+    }
+  }
 }
-/* Masonry Grid Styles */
-.my-masonry-grid {
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility card {
+  @apply bg-light-bg-secondary border border-light-border rounded-2xl shadow-lg backdrop-blur-xs dark:bg-dark-bg-secondary dark:border-dark-border transition-all duration-300;
+}
+
+@utility btn-primary {
+  @apply bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors duration-300;
+}
+
+@utility input-primary {
+  @apply bg-light-bg-secondary border border-light-border text-light-text-primary rounded-lg dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all duration-300;
+}
+
+@utility drop-zone {
+  @apply border-2 border-dashed border-light-border bg-light-bg-secondary rounded-xl p-8 dark:border-dark-border dark:bg-dark-bg-secondary hover:border-indigo-500 dark:hover:border-indigo-400 transition-all duration-300;
+
+  &.active {
+    @apply border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20;
+  }
+}
+
+@utility active {
+  &.drop-zone {
+    @apply border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20;
+  }
+}
+
+@utility btn-icon {
+  @apply p-2 rounded-lg bg-light-bg-secondary text-light-text-primary hover:bg-light-hover active:bg-light-hover/80 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:hover:bg-dark-hover dark:active:bg-dark-hover/80 transition-colors duration-300;
+}
+
+/* 动画效果 */
+@utility fade-in {
+  @apply animate-[fadeIn_0.3s_ease-in-out];
+}
+@utility slide-up {
+  @apply animate-[slideUp_0.3s_ease-in-out];
+}
+
+@layer utilities {
+  body {
+    font-family:
+      Inter,
+      'Noto Sans SC',
+      system-ui,
+      -apple-system,
+      sans-serif;
+    font-weight: 700;
+  }
+  /* Masonry Grid Styles */
+  .my-masonry-grid {
     display: flex;
     margin-left: -16px;
     /* gutter size offset */
     width: auto;
     margin-bottom: 16px;
-}
+  }
 
-.my-masonry-grid_column {
+  .my-masonry-grid_column {
     padding-left: 16px;
     /* gutter size */
     background-clip: padding-box;
-}
+  }
 
-.my-masonry-grid_column>div {
+  .my-masonry-grid_column > div {
     margin-bottom: 16px;
-}
+  }
 
-/* 亮色主题变量 */
-:root {
+  /* 亮色主题变量 */
+  :root {
     --light-bg-start: 240, 242, 245;
     --light-bg-end: 255, 255, 255;
     --light-text: 51, 51, 51;
@@ -35,10 +134,10 @@ body {
     --light-hover: 243, 244, 246;
     --light-primary: 99, 102, 241;
     --light-primary-hover: 79, 70, 229;
-}
+  }
 
-/* 暗色主题变量 */
-:root.dark {
+  /* 暗色主题变量 */
+  :root.dark {
     --dark-bg-start: 17, 24, 39;
     --dark-bg-end: 31, 41, 55;
     --dark-text: 229, 231, 235;
@@ -47,37 +146,38 @@ body {
     --dark-hover: 55, 65, 81;
     --dark-primary: 99, 102, 241;
     --dark-primary-hover: 79, 70, 229;
-}
+  }
 
-/* 自定义滚动条 */
-::-webkit-scrollbar {
+  /* 自定义滚动条 */
+  ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
     display: none;
-}
+  }
 
-html {
+  html {
     scrollbar-width: none;
     -ms-overflow-style: none;
-}
+  }
 
-.scrollable-container:hover::-webkit-scrollbar {
+  .scrollable-container:hover::-webkit-scrollbar {
     display: block;
-}
+  }
 
-.scrollable-container {
+  .scrollable-container {
     overflow-y: auto;
     max-height: 300px;
     scrollbar-width: thin;
-}
+  }
 
-.scrollable-container:hover {
+  .scrollable-container:hover {
     scrollbar-width: thin;
-}
+  }
 
-/* 全局样式 */
-html {
+  /* 全局样式 */
+  html {
     height: 100%;
+  }
 }
 
 @layer base {
@@ -89,43 +189,6 @@ html {
 
     .dark body {
         @apply bg-dark-bg-primary text-dark-text-primary;
-    }
-}
-
-@layer components {
-    .card {
-        @apply bg-light-bg-secondary border border-light-border rounded-2xl shadow-lg backdrop-blur-sm dark:bg-dark-bg-secondary dark:border-dark-border transition-all duration-300;
-    }
-
-    .btn-primary {
-        @apply bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 dark:bg-indigo-600 dark:hover:bg-indigo-700 transition-colors duration-300;
-    }
-
-    .input-primary {
-        @apply bg-light-bg-secondary border border-light-border text-light-text-primary rounded-lg dark:bg-dark-bg-secondary dark:border-dark-border dark:text-dark-text-primary focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 transition-all duration-300;
-    }
-
-    .drop-zone {
-        @apply border-2 border-dashed border-light-border bg-light-bg-secondary rounded-xl p-8 dark:border-dark-border dark:bg-dark-bg-secondary hover:border-indigo-500 dark:hover:border-indigo-400 transition-all duration-300;
-    }
-
-    .drop-zone.active {
-        @apply border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/20;
-    }
-
-    .btn-icon {
-        @apply p-2 rounded-lg bg-light-bg-secondary text-light-text-primary hover:bg-light-hover active:bg-light-hover/80 dark:bg-dark-bg-secondary dark:text-dark-text-primary dark:hover:bg-dark-hover dark:active:bg-dark-hover/80 transition-colors duration-300;
-    }
-}
-
-/* 动画效果 */
-@layer utilities {
-    .fade-in {
-        @apply animate-[fadeIn_0.3s_ease-in-out];
-    }
-
-    .slide-up {
-        @apply animate-[slideUp_0.3s_ease-in-out];
     }
 }
 

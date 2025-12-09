@@ -70,12 +70,12 @@ export default function ImageCard({
       case "portrait":
         return {
           heightClass: "h-auto",
-          aspectRatio: "aspect-[3/4]",
+          aspectRatio: "aspect-3/4",
         };
       case "landscape":
         return {
           heightClass: "h-auto",
-          aspectRatio: "aspect-[4/3]",
+          aspectRatio: "aspect-4/3",
         };
       case "square":
         return {
@@ -269,19 +269,19 @@ export default function ImageCard({
 
           {/* Image info overlay */}
           <div
-            className={`absolute top-0 left-0 right-0 p-3 flex justify-between items-center bg-gradient-to-b from-black/60 to-transparent text-white transition-opacity duration-300 ${
+            className={`absolute top-0 left-0 right-0 p-3 flex justify-between items-center bg-linear-to-b from-black/60 to-transparent text-white transition-opacity duration-300 ${
               isLoading ? "opacity-0" : "opacity-100"
             }`}
           >
             <div className="flex space-x-1">
               <span
-                className={`text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm ${
+                className={`text-xs font-medium px-2 py-1 rounded-full backdrop-blur-xs ${
                   isGif ? "bg-green-500/70" : "bg-blue-500/70"
                 }`}
               >
                 {getFormatLabel(image.format)}
               </span>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-500/70 backdrop-blur-sm">
+              <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-500/70 backdrop-blur-xs">
                 {getOrientationLabel(image.orientation)}
               </span>
             </div>
@@ -293,7 +293,7 @@ export default function ImageCard({
                 e.stopPropagation();
                 copyToClipboard(getFullUrl(image.urls?.webp || image.urls?.original || ''));
               }}
-              className="p-1.5 rounded-full bg-white/20 backdrop-blur-sm hover:bg-white/40 transition-colors"
+              className="p-1.5 rounded-full bg-white/20 backdrop-blur-xs hover:bg-white/40 transition-colors"
               title="复制URL"
             >
               {copyStatus === "idle" && (

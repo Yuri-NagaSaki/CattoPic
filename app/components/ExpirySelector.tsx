@@ -84,7 +84,7 @@ export default function ExpirySelector({ onChange }: ExpirySelectorProps) {
         <select
           value={selectedOption}
           onChange={handleOptionChange}
-          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-sm"
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-xs"
         >
           <option value="never">永不过期</option>
           <option value="1m">1分钟</option>
@@ -104,7 +104,7 @@ export default function ExpirySelector({ onChange }: ExpirySelectorProps) {
               min="1"
               value={customValue}
               onChange={handleCustomValueChange}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-center font-medium shadow-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-center font-medium shadow-xs"
               aria-label="自定义时间值"
             />
           </div>
@@ -112,7 +112,7 @@ export default function ExpirySelector({ onChange }: ExpirySelectorProps) {
             <select
               value={timeUnit}
               onChange={handleTimeUnitChange}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-sm"
+              className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 text-gray-700 dark:text-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-600 text-sm shadow-xs"
             >
               <option value="minutes">分钟</option>
               <option value="hours">小时</option>
