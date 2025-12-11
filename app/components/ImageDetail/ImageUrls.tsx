@@ -141,7 +141,7 @@ export function ImageUrls({ image }: ImageUrlsProps) {
 
       <UrlItem
         title="Markdown 格式"
-        url={`![${image.originalName || ''}](${originalUrl})`}
+        url={`![${image.originalName || ''}](${webpUrl || originalUrl})`}
         icon={<Link1Icon className="h-4 w-4" />}
         iconColor="text-amber-500"
         copyType="markdown"

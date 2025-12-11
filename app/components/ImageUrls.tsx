@@ -176,8 +176,9 @@ export const ImageUrls = ({ image }: ImageUrlsProps) => {
   const recommendedUrl = isGif ? originalUrl : webpUrl;
   const recommendedType = isGif ? "original" : "webp";
 
-  const currentFormatUrl = format === "webp" ? webpUrl : format === "avif" ? avifUrl : originalUrl;
-  const markdownLink = buildMarkdownLink(currentFormatUrl!, image.originalName || '');
+  // Markdown 始终优先使用 WebP 格式（GIF 除外）
+  const markdownUrl = isGif ? originalUrl : (webpUrl || originalUrl);
+  const markdownLink = buildMarkdownLink(markdownUrl!, image.originalName || '');
 
   // 构建次要链接列表
   const secondaryLinks = [
