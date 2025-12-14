@@ -18,7 +18,15 @@ export interface ImageTransformOptions {
 }
 
 export interface ImageOutputOptions {
-  format: 'image/webp' | 'image/avif' | 'image/jpeg' | 'image/png';
+  format:
+    | 'webp'
+    | 'avif'
+    | 'jpeg'
+    | 'png'
+    | 'image/webp'
+    | 'image/avif'
+    | 'image/jpeg'
+    | 'image/png';
   quality?: number;
 }
 

@@ -54,23 +54,25 @@ export class CompressionService {
       opts.maxHeight
     );
 
-    // AVIF dimensions (with 1600px limit)
-    const avifDims = {
-      width: Math.min(targetDims.width, 1600),
-      height: Math.min(targetDims.height, 1600),
-    };
+    // AVIF dimensions (with 1600px max while preserving aspect ratio)
+    const avifDims = this.calculateDimensions(
+      width,
+      height,
+      Math.min(opts.maxWidth, 1600),
+      Math.min(opts.maxHeight, 1600)
+    );
 
     // Compress to WebP and AVIF in parallel (optionally)
     const [webpResult, avifResult] = await Promise.all([
       opts.generateWebp
-        ? this.compressToFormat(data, 'image/webp', opts.quality, targetDims)
+        ? this.compressToFormat(data, 'webp', opts.quality, targetDims)
           .catch((e) => {
             console.error('WebP compression failed:', e);
             return null;
           })
         : Promise.resolve(null),
       opts.generateAvif
-        ? this.compressToFormat(data, 'image/avif', opts.quality, avifDims)
+        ? this.compressToFormat(data, 'avif', opts.quality, avifDims)
           .catch((e) => {
             console.error('AVIF compression failed:', e);
             return null;
@@ -89,7 +91,7 @@ export class CompressionService {
    */
   private async compressToFormat(
     data: ArrayBuffer,
-    format: 'image/webp' | 'image/avif',
+    format: 'webp' | 'avif',
     quality: number,
     dimensions: { width: number; height: number }
   ): Promise<CompressedImage> {
