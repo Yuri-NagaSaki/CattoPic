@@ -33,10 +33,51 @@ interface UseImagesOptions {
   limit?: number;
 }
 
+function matchesFilters(image: ImageFile, tag: string, orientation: string): boolean {
+  const tagOk = !tag || image.tags.includes(tag);
+  const orientationOk = !orientation || image.orientation === orientation;
+  return tagOk && orientationOk;
+}
+
+function mergeFirstPageImages(
+  existing: ImageFile[],
+  additions: ImageFile[],
+  limit: number
+): { images: ImageFile[]; addedCount: number } {
+  const seen = new Set<string>();
+  const merged: ImageFile[] = [];
+
+  for (const img of [...additions, ...existing]) {
+    if (!img.id || seen.has(img.id)) continue;
+    seen.add(img.id);
+    merged.push(img);
+    if (merged.length >= limit) break;
+  }
+
+  const existingIds = new Set(existing.map((i) => i.id));
+  const addedCount = additions.filter((i) => i.id && !existingIds.has(i.id)).length;
+
+  return { images: merged, addedCount };
+}
+
 // Hook for infinite scrolling image list
 export function useInfiniteImages(options: UseImagesOptions = {}) {
   const { tag = '', orientation = '', limit = 24 } = options;
   const queryClient = useQueryClient();
+
+  const recentUploads = queryClient.getQueryData<ImageFile[]>(queryKeys.images.recentUploads()) || [];
+  const recentMatches = recentUploads.filter((img) => matchesFilters(img, tag, orientation)).slice(0, limit);
+  const placeholder = recentMatches.length > 0 ? ({
+    pageParams: [1],
+    pages: [
+      {
+        images: recentMatches,
+        page: 1,
+        total: recentMatches.length,
+        totalPages: 1,
+      },
+    ],
+  } satisfies InfiniteData<ImageListResponse>) : null;
 
   const query = useInfiniteQuery({
     queryKey: queryKeys.images.list({ tag, orientation, limit }),
@@ -59,6 +100,34 @@ export function useInfiniteImages(options: UseImagesOptions = {}) {
     },
     initialPageParam: 1,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    ...(placeholder ? { placeholderData: placeholder } : {}),
+    select: (data) => {
+      const latestRecent = queryClient.getQueryData<ImageFile[]>(queryKeys.images.recentUploads()) || [];
+      const candidates = latestRecent.filter((img) => matchesFilters(img, tag, orientation));
+      if (candidates.length === 0 || data.pages.length === 0) return data;
+
+      const allIds = new Set<string>();
+      for (const page of data.pages) {
+        for (const img of page.images) {
+          if (img.id) allIds.add(img.id);
+        }
+      }
+
+      const missing = candidates.filter((img) => img.id && !allIds.has(img.id));
+      const total = Math.max(data.pages[0].total || 0, (data.pages[0].total || 0) + missing.length);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+
+      const firstPage = data.pages[0];
+      const { images: mergedFirst } = mergeFirstPageImages(firstPage.images, candidates, limit);
+
+      return {
+        ...data,
+        pages: data.pages.map((p, idx) => idx === 0
+          ? { ...p, images: mergedFirst, total, totalPages }
+          : { ...p, total, totalPages }
+        ),
+      };
+    },
   });
 
   // Flatten all pages into a single array
@@ -85,6 +154,18 @@ export function useInfiniteImages(options: UseImagesOptions = {}) {
 // Hook for paginated image list (non-infinite)
 export function useImages(options: UseImagesOptions & { page?: number } = {}) {
   const { page = 1, tag = '', orientation = '', limit = 24 } = options;
+  const queryClient = useQueryClient();
+
+  const recentUploads = queryClient.getQueryData<ImageFile[]>(queryKeys.images.recentUploads()) || [];
+  const recentMatches = page === 1
+    ? recentUploads.filter((img) => matchesFilters(img, tag, orientation)).slice(0, limit)
+    : [];
+  const placeholder = recentMatches.length > 0 ? ({
+    images: recentMatches,
+    page: 1,
+    total: recentMatches.length,
+    totalPages: 1,
+  } satisfies ImageListResponse) : null;
 
   const query = useQuery({
     queryKey: queryKeys.images.list({ page, tag, orientation, limit }),
@@ -99,6 +180,21 @@ export function useImages(options: UseImagesOptions & { page?: number } = {}) {
       return api.get<ImageListResponse>('/api/images', params);
     },
     staleTime: 5 * 60 * 1000,
+    ...(placeholder ? { placeholderData: placeholder } : {}),
+    select: (data) => {
+      if (page !== 1) return data;
+      const latestRecent = queryClient.getQueryData<ImageFile[]>(queryKeys.images.recentUploads()) || [];
+      const candidates = latestRecent.filter((img) => matchesFilters(img, tag, orientation));
+      if (candidates.length === 0) return data;
+
+      const existingIds = new Set(data.images.map((i) => i.id));
+      const missing = candidates.filter((img) => img.id && !existingIds.has(img.id));
+      const total = Math.max(data.total || 0, (data.total || 0) + missing.length);
+      const totalPages = Math.max(1, Math.ceil(total / limit));
+      const { images: merged } = mergeFirstPageImages(data.images, candidates, limit);
+
+      return { ...data, images: merged, total, totalPages };
+    },
   });
 
   return {

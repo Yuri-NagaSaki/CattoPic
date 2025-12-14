@@ -5,6 +5,7 @@ export const queryKeys = {
     lists: () => [...queryKeys.images.all, 'list'] as const,
     list: (filters: { page?: number; limit?: number; tag?: string; orientation?: string }) =>
       [...queryKeys.images.lists(), filters] as const,
+    recentUploads: () => [...queryKeys.images.all, 'recentUploads'] as const,
     details: () => [...queryKeys.images.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.images.details(), id] as const,
   },

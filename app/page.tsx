@@ -78,68 +78,114 @@ export default function Home() {
 
     if (uploadedImages.length === 0) return
 
-    const cachedLists = queryClient.getQueriesData<InfiniteData<ImageListResponse>>({
+    // Store a small in-memory "recent uploads" list so newly created filter queries can render instantly.
+    queryClient.setQueryData<ImageFile[]>(queryKeys.images.recentUploads(), (old) => {
+      const existing = Array.isArray(old) ? old : []
+      const merged = [...uploadedImages, ...existing]
+      const seen = new Set<string>()
+      const unique: ImageFile[] = []
+      for (const img of merged) {
+        if (!img.id || seen.has(img.id)) continue
+        seen.add(img.id)
+        unique.push(img)
+      }
+      return unique.slice(0, 200)
+    })
+
+    const isInfiniteData = (value: unknown): value is InfiniteData<ImageListResponse> => {
+      return !!value
+        && typeof value === 'object'
+        && 'pages' in value
+        && Array.isArray((value as { pages: unknown }).pages)
+        && 'pageParams' in value
+        && Array.isArray((value as { pageParams: unknown }).pageParams)
+    }
+
+    const isImageListResponse = (value: unknown): value is ImageListResponse => {
+      return !!value
+        && typeof value === 'object'
+        && 'images' in value
+        && Array.isArray((value as { images: unknown }).images)
+        && 'page' in value
+    }
+
+    const uniqueById = (items: ImageFile[]) => {
+      const seen = new Set<string>()
+      const out: ImageFile[] = []
+      for (const item of items) {
+        if (!item.id || seen.has(item.id)) continue
+        seen.add(item.id)
+        out.push(item)
+      }
+      return out
+    }
+
+    const mergeFirstPage = (existing: ImageFile[], additions: ImageFile[], limit: number) => {
+      return uniqueById([...additions, ...existing]).slice(0, limit)
+    }
+
+    const cachedLists = queryClient.getQueriesData({
       queryKey: queryKeys.images.lists(),
     })
 
     for (const [queryKey, data] of cachedLists) {
       if (!Array.isArray(queryKey) || queryKey.length < 3) continue
-      const filters = queryKey[2] as { tag?: string; orientation?: string; limit?: number } | undefined
+
+      const filters = queryKey[2] as { page?: number; tag?: string; orientation?: string; limit?: number } | undefined
       const tag = typeof filters?.tag === 'string' ? filters.tag : ''
       const orientation = typeof filters?.orientation === 'string' ? filters.orientation : ''
       const limit = typeof filters?.limit === 'number' ? filters.limit : 24
+      const page = typeof filters?.page === 'number' ? filters.page : undefined
 
-      const matchesFilters = (img: ImageFile) => {
+      const candidates = uploadedImages.filter((img) => {
         const tagOk = !tag || img.tags.includes(tag)
         const orientationOk = !orientation || img.orientation === orientation
         return tagOk && orientationOk
-      }
-
-      const candidates = uploadedImages.filter(matchesFilters)
+      })
       if (candidates.length === 0) continue
 
-      queryClient.setQueryData<InfiniteData<ImageListResponse>>(queryKey, (old) => {
-        const uniqueCandidates = candidates.filter((img) => img.id)
-        const uniqueById = (items: ImageFile[]) => {
-          const seen = new Set<string>()
-          const out: ImageFile[] = []
-          for (const item of items) {
-            if (!item.id || seen.has(item.id)) continue
-            seen.add(item.id)
-            out.push(item)
-          }
-          return out
-        }
+      if (isInfiniteData(data)) {
+        queryClient.setQueryData<InfiniteData<ImageListResponse>>(queryKey, (old) => {
+          if (!old || old.pages.length === 0) return old
 
-        if (!old || old.pages.length === 0) {
-          const images = uniqueById(uniqueCandidates).slice(0, limit)
+          const allIds = new Set<string>()
+          for (const p of old.pages) {
+            for (const img of p.images) allIds.add(img.id)
+          }
+
+          const missingCount = candidates.filter((img) => img.id && !allIds.has(img.id)).length
+          const firstPage = old.pages[0]
+          const total = Math.max(firstPage.total || 0, (firstPage.total || 0) + missingCount)
+          const totalPages = Math.max(1, Math.ceil(total / limit))
+
           return {
-            pageParams: [1],
-            pages: [
-              {
-                images,
-                page: 1,
-                total: images.length,
-                totalPages: 1,
-              },
-            ],
+            ...old,
+            pages: old.pages.map((p, idx) => idx === 0
+              ? { ...p, images: mergeFirstPage(p.images, candidates, limit), total, totalPages }
+              : { ...p, total, totalPages }
+            ),
           }
-        }
+        })
+        continue
+      }
 
-        const firstPage = old.pages[0]
-        const mergedFirst = uniqueById([...uniqueCandidates, ...firstPage.images]).slice(0, limit)
-        const addedCount = uniqueCandidates.filter((img) => !firstPage.images.some((oldImg) => oldImg.id === img.id)).length
-        const total = Math.max(0, (firstPage.total || 0) + addedCount)
-        const totalPages = Math.max(1, Math.ceil(total / limit))
+      if (isImageListResponse(data)) {
+        queryClient.setQueryData<ImageListResponse>(queryKey, (old) => {
+          if (!old) return old
 
-        return {
-          ...old,
-          pages: old.pages.map((p, idx) => idx === 0
-            ? { ...p, images: mergedFirst, total, totalPages }
-            : { ...p, total, totalPages }
-          ),
-        }
-      })
+          const existingIds = new Set(old.images.map((i) => i.id))
+          const missingCount = candidates.filter((img) => img.id && !existingIds.has(img.id)).length
+          const total = Math.max(old.total || 0, (old.total || 0) + missingCount)
+          const totalPages = Math.max(1, Math.ceil(total / limit))
+
+          // Only page 1 can be safely prepended without shifting other pages.
+          if ((page ?? 1) !== 1) {
+            return { ...old, total, totalPages }
+          }
+
+          return { ...old, images: mergeFirstPage(old.images, candidates, limit), total, totalPages }
+        })
+      }
     }
   }, [queryClient])
 
