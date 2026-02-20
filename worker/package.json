@@ -18,7 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.24.0",
   "dependencies": {
-    "hono": "^4.11.7"
+    "hono": "^4.11.10"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260207.0",
