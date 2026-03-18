@@ -15,7 +15,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.25",
-    "next": "16.1.5",
+    "next": "16.1.7",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-intersection-observer": "^9.16.0",
