@@ -30,7 +30,7 @@
     "dotenv": "^16.4.7",
     "eslint": "^9.39.1",
     "eslint-config-next": "^16.0.8",
-    "postcss": "^8.4.35",
+    "postcss": "^8.5.10",
     "tailwindcss": "^4.1.17",
     "typescript": "^5.9.3"
   },
