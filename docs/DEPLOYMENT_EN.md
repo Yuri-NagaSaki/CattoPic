@@ -249,9 +249,37 @@ Click "Deploy" button and wait for completion.
 
 ---
 
-## 5. Local Development
+## 5. Upgrading Existing Deployments
 
-### 5.1 Start Worker (Local)
+Existing deployments should keep the current D1 database. API keys in the `api_keys` table do not need migration or rotation. `schema.sql` is only for fresh installations; do not reinitialize the database during upgrades.
+
+This release adds a `deletion_jobs` table for reliable R2 deletion retries. The Worker lazily creates that table at runtime through the D1 binding, so fork users and local deployers do not need to run a manual D1 migration command.
+
+### 5.1 Fork + GitHub Actions
+
+1. Sync or merge upstream changes.
+2. Keep the existing repository secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `WRANGLER_TOML`.
+3. Push to `main`, or manually run the `Deploy Worker` workflow in GitHub Actions.
+4. The workflow installs dependencies, generates `wrangler.toml`, typechecks the Worker, and deploys it.
+5. Do not run D1 SQL from Actions for this upgrade.
+
+### 5.2 Local Pull + Manual Deploy
+
+```bash
+git pull
+corepack pnpm install --frozen-lockfile
+corepack pnpm -C worker install --frozen-lockfile
+corepack pnpm -C worker exec tsc --noEmit
+corepack pnpm -C worker wrangler deploy
+```
+
+API keys are still validated only from the D1 `api_keys` table. Do not configure an API key as a Worker Secret.
+
+---
+
+## 6. Local Development
+
+### 6.1 Start Worker (Local)
 
 ```bash
 cd worker
@@ -259,14 +287,14 @@ pnpm dev
 # Running at http://localhost:8787
 ```
 
-### 5.2 Start Frontend (Local)
+### 6.2 Start Frontend (Local)
 
 ```bash
 pnpm dev
 # Running at http://localhost:3000
 ```
 
-### 5.3 Local Environment Variables
+### 6.3 Local Environment Variables
 
 Create `.env.local` file:
 
@@ -276,7 +304,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 
 ---
 
-## 6. API Reference
+## 7. API Reference
 
 ### Authentication
 

@@ -215,6 +215,31 @@ Deploy to Vercel with environment variable:
 | `NEXT_PUBLIC_API_URL` | `https://your-worker.workers.dev` |
 | `NEXT_PUBLIC_REMOTE_PATTERNS` | `https://your-worker.workers.dev,https://r2`|
 
+## Upgrading Existing Deployments
+
+`schema.sql` is the baseline for new installations. Existing deployments should keep their current D1 database; API keys remain in the `api_keys` table.
+
+This release adds a `deletion_jobs` table for reliable R2 cleanup. Existing deployments do not need a manual D1 migration command: the Worker creates the table through the D1 binding the first time delete/cleanup code needs it.
+
+### Fork + GitHub Actions
+
+1. Sync or merge upstream changes into your fork.
+2. Keep your existing GitHub Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `WRANGLER_TOML`.
+3. Push to `main` or run the `Deploy Worker` workflow manually.
+4. No D1 command is required for this upgrade.
+
+### Local Pull + Manual Deploy
+
+```bash
+git pull
+corepack pnpm install --frozen-lockfile
+corepack pnpm -C worker install --frozen-lockfile
+corepack pnpm -C worker exec tsc --noEmit
+corepack pnpm -C worker wrangler deploy
+```
+
+No API key rotation is required. Do not configure an API key as a Worker secret; D1 remains the only API key source.
+
 ## API Overview
 
 ### Public Endpoints
@@ -299,4 +324,3 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 ## License
 
 [GPL-3.0](./LICENSE)
-

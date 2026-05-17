@@ -215,6 +215,31 @@ INSERT INTO api_keys (key, created_at) VALUES ('your-secure-api-key', datetime('
 | `NEXT_PUBLIC_API_URL` | `https://your-worker.workers.dev` |
 | `NEXT_PUBLIC_REMOTE_PATTERNS` | `https://your-worker.workers.dev,https://r2`|
 
+## 升级已有部署
+
+`schema.sql` 是新安装的基线表结构。已有部署应继续使用当前 D1 数据库；API Key 仍保存在 `api_keys` 表中。
+
+本版本新增 `deletion_jobs` 表，用于可靠重试 R2 文件清理。已有部署不需要手动执行 D1 迁移命令：Worker 会在删除/清理逻辑首次需要时，通过 D1 binding 自动创建这张表。
+
+### Fork + GitHub Actions 部署
+
+1. 将上游变更同步或合并到你的 fork。
+2. 保留现有 GitHub Secrets：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`WRANGLER_TOML`。
+3. 推送到 `main`，或在 Actions 页面手动运行 `Deploy Worker` workflow。
+4. 本次升级不需要额外执行 D1 命令。
+
+### 本地拉取 + 手动部署
+
+```bash
+git pull
+corepack pnpm install --frozen-lockfile
+corepack pnpm -C worker install --frozen-lockfile
+corepack pnpm -C worker exec tsc --noEmit
+corepack pnpm -C worker wrangler deploy
+```
+
+不需要轮换 API Key。不要把 API Key 配置成 Worker Secret；D1 仍然是唯一的 API Key 来源。
+
 ## API 概览
 
 ### 公开接口

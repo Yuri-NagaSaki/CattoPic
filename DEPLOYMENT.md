@@ -249,9 +249,37 @@ pnpm wrangler deploy
 
 ---
 
-## 五、本地开发
+## 五、升级已有部署
 
-### 5.1 启动 Worker（本地）
+已有部署应继续使用原来的 D1 数据库，`api_keys` 表中的 API Key 不需要迁移或轮换。`schema.sql` 只用于新安装；升级时不要重新初始化数据库。
+
+本版本新增 `deletion_jobs` 表用于可靠重试 R2 删除任务。该表由 Worker 在运行时通过 D1 binding 懒创建，因此 fork 用户和本地部署用户都不需要手动执行 D1 迁移命令。
+
+### 5.1 Fork + GitHub Actions
+
+1. 同步或合并上游代码。
+2. 确认仓库仍配置了 `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`、`WRANGLER_TOML`。
+3. 推送到 `main`，或在 GitHub Actions 手动运行 `Deploy Worker`。
+4. workflow 会安装依赖、生成 `wrangler.toml`、执行 Worker 类型检查并部署 Worker。
+5. 不需要在 Actions 中执行 D1 SQL。
+
+### 5.2 本地拉取 + 手动部署
+
+```bash
+git pull
+corepack pnpm install --frozen-lockfile
+corepack pnpm -C worker install --frozen-lockfile
+corepack pnpm -C worker exec tsc --noEmit
+corepack pnpm -C worker wrangler deploy
+```
+
+API Key 仍只从 D1 `api_keys` 表校验，不要配置成 Worker Secret。
+
+---
+
+## 六、本地开发
+
+### 6.1 启动 Worker（本地）
 
 ```bash
 cd worker
@@ -259,14 +287,14 @@ pnpm dev
 # 运行在 http://localhost:8787
 ```
 
-### 5.2 启动前端（本地）
+### 6.2 启动前端（本地）
 
 ```bash
 pnpm dev
 # 运行在 http://localhost:3000
 ```
 
-### 5.3 本地环境变量
+### 6.3 本地环境变量
 
 创建 `.env.local` 文件：
 
@@ -276,7 +304,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 
 ---
 
-## 六、API 参考
+## 七、API 参考
 
 ### 认证方式
 
