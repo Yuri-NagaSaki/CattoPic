@@ -73,6 +73,15 @@ export class CacheService {
     await this.delete(CacheKeys.imageDetail(id));
   }
 
+  async invalidateImageDetails(ids: string[]): Promise<void> {
+    const chunkSize = 100;
+    for (let i = 0; i < ids.length; i += chunkSize) {
+      await Promise.all(
+        ids.slice(i, i + chunkSize).map((id) => this.invalidateImageDetail(id))
+      );
+    }
+  }
+
   // Convenience method: invalidate tags list cache
   async invalidateTagsList(): Promise<void> {
     await this.delete(CacheKeys.tagsList());

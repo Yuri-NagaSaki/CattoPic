@@ -1,49 +1,22 @@
 import { getApiKey } from "./auth";
+import { buildApiUrl, ensureApiBaseUrl } from "./baseUrl";
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
-}
-
-interface ConfigResponse {
-  apiUrl: string;
-  remotePatterns: string;
-}
-
-let BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
-let initPromise: Promise<void> | null = null;
-
-async function initializeBaseUrl() {
-  try {
-    const response = await fetch("/api/config");
-    const config: ConfigResponse = await response.json();
-    if (config.apiUrl) {
-      BASE_URL = config.apiUrl;
-    }
-  } catch (error) {
-    console.error("Failed to fetch API config:", error);
-  }
-}
-
-// Ensure initialization only runs once, even with concurrent requests
-async function ensureInitialized() {
-  if (!initPromise) {
-    initPromise = initializeBaseUrl();
-  }
-  await initPromise;
 }
 
 export async function request<T>(
   endpoint: string,
   options: RequestOptions = {}
 ): Promise<T> {
-  await ensureInitialized();
+  await ensureApiBaseUrl();
 
   const apiKey = getApiKey();
 
   const { params, ...restOptions } = options;
 
   // 构建URL
-  const url: URL = new URL(endpoint, BASE_URL || window.location.origin);
+  const url = buildApiUrl(endpoint);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       url.searchParams.append(key, value);

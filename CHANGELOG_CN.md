@@ -8,6 +8,7 @@
 
 ### 新增
 
+- **持久化 R2 删除任务** - 新增 D1 `deletion_jobs` 重试表，图片元数据可以立即删除，R2 清理失败后仍可由 Queue/Cron/手动清理恢复。
 - **Cloudflare Queues 可选化** - R2 文件删除不再强制依赖 Cloudflare Queues。在 wrangler.toml 中设置 `USE_QUEUE = 'true'` 使用异步队列删除，设置为 `'false'` 则使用同步删除（无需付费 Queue 功能）。
 - **ZIP 批量上传** - 支持通过 ZIP 压缩包批量上传图片
   - 使用 JSZip 在浏览器端解压
@@ -18,6 +19,9 @@
 
 ### 变更
 
+- API Base URL 解析改为统一复用运行时 `/api/config` helper，覆盖普通请求、API Key 校验和 URL 拼接。
+- 过期图片清理会先写入持久化 R2 删除任务，再在后台删除文件，并支持 Cron/手动清理重试。
+- Worker 部署 workflow 改用 pnpm 10.24.0，与 Worker package manager 和 lockfile 生成版本保持一致。
 - 当 WebP/AVIF 文件未生成/缺失时（例如超过 10MB 的上传），改用 Cloudflare Transform Images URL（`/cdn-cgi/image/...`）作为兜底输出方式。
 - `/api/random` 改为 302 重定向到实际图片 URL（不再由 Worker 代理回源返回图片字节，Transform-URL 场景更稳定）。
 - 关闭 Next.js 图片优化（图片已使用 Transform-URL 输出，无需再二次优化）。
@@ -35,6 +39,12 @@
 
 ### 修复
 
+- 修复 `PUT /api/images/:id` 中 `expiryMinutes: 0` 无法清除图片过期时间的问题。
+- 在定时清理真正删除过期图片前，列表、详情、随机图和标签计数读取都会先隐藏已过期图片。
+- 修复批量改标签、删除标签和过期清理后 image detail KV 缓存可能返回旧数据的问题。
+- 批量标签更新增加数量上限和 D1 分片执行，避免触发 SQL 变量数/语句长度限制。
+- API Key 鉴权不再把每个受保护读请求都变成 D1 写入；`last_used_at` 仅在校验 API Key 时更新。
+- 修复中文 API 文档仍使用 `/api/upload` 的问题，并统一部署文档中的 Worker compatibility date。
 - 修复 Dependabot lockfile 漂移导致 Vercel frozen install 失败的问题：根目录 `dotenv` 的 manifest specifier 现在与 `pnpm-lock.yaml` 保持一致。
 - Worker 处理器在调用元数据/缓存服务前，会先校验缺失或格式错误的图片/标签路由参数。
 - 修复 WebP 和 AVIF 图片的方向检测 - 现在会正确读取图片实际尺寸，而不是默认返回 1920x1080。

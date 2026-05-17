@@ -5,13 +5,19 @@ export class AuthService {
   async validateApiKey(key: string): Promise<boolean> {
     if (!key) return false;
 
-    // Single query: UPDATE with RETURNING to combine SELECT + UPDATE
     const result = await this.db.prepare(`
-      UPDATE api_keys SET last_used_at = ? WHERE key = ?
-      RETURNING id
-    `).bind(new Date().toISOString(), key).first<{ id: number }>();
+      SELECT id FROM api_keys WHERE key = ? LIMIT 1
+    `).bind(key).first<{ id: number }>();
 
     return result !== null;
+  }
+
+  async recordApiKeyUsage(key: string): Promise<void> {
+    if (!key) return;
+
+    await this.db.prepare(`
+      UPDATE api_keys SET last_used_at = ? WHERE key = ?
+    `).bind(new Date().toISOString(), key).run();
   }
 
   async addApiKey(key: string): Promise<void> {

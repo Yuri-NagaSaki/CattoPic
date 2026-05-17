@@ -983,7 +983,7 @@ Access-Control-Max-Age: 86400
 | `/api/images/:id` | GET | 是 | 获取图像详情 |
 | `/api/images/:id` | PUT | 是 | 更新图像元数据 |
 | `/api/images/:id` | DELETE | 是 | 删除图像 |
-| `/api/upload` | POST | 是 | 上传图像 |
+| `/api/upload/single` | POST | 是 | 上传图像 |
 | `/api/tags` | GET | 是 | 获取所有标签 |
 | `/api/tags` | POST | 是 | 创建新标签 |
 | `/api/tags/:name` | PUT | 是 | 重命名标签 |
@@ -1017,7 +1017,7 @@ async function uploadImages(files, tags = []) {
     formData.append('tags', tags.join(','));
   }
 
-  const response = await fetch(`${API_URL}/api/upload`, {
+  const response = await fetch(`${API_URL}/api/upload/single`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${API_KEY}`

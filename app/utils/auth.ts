@@ -1,6 +1,8 @@
+import { buildApiUrl, ensureApiBaseUrl } from "./baseUrl";
+
 const API_KEY_KEY = "cattopic_api_key";
 export const API_KEY_CHANGE_EVENT = "cattopic_api_key_change";
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
+
 export const getApiKey = (): string | null => {
   if (typeof window !== "undefined") {
     return localStorage.getItem(API_KEY_KEY);
@@ -24,7 +26,8 @@ export const removeApiKey = (): void => {
 
 export const validateApiKey = async (apiKey: string): Promise<boolean> => {
   try {
-    const response = await fetch(`${BASE_URL}/api/validate-api-key`, {
+    await ensureApiBaseUrl();
+    const response = await fetch(buildApiUrl("/api/validate-api-key").toString(), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

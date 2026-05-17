@@ -105,6 +105,12 @@ pnpm wrangler queues create cattopic-delete-queue
 pnpm wrangler d1 execute CattoPic-D1 --remote --file=schema.sql
 ```
 
+For existing deployments, run new migrations in order:
+
+```bash
+pnpm wrangler d1 execute CattoPic-D1 --remote --file=migrations/0003_deletion_jobs.sql
+```
+
 ### 1.7 Configure wrangler.toml
 
 Copy the template configuration file:
@@ -118,7 +124,7 @@ Edit `worker/wrangler.toml` with your resource IDs:
 ```toml
 name = 'cattopic-worker'
 main = 'src/index.ts'
-compatibility_date = '2024-12-01'
+compatibility_date = '2025-12-10'
 compatibility_flags = ['nodejs_compat']
 
 [vars]

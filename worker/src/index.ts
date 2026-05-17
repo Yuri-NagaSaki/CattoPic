@@ -4,7 +4,8 @@ import type { Env } from './types';
 import { AuthService } from './services/auth';
 import { corsResponse, unauthorizedResponse } from './utils/response';
 import { MetadataService } from './services/metadata';
-import { StorageService } from './services/storage';
+import { CacheService } from './services/cache';
+import { dispatchImageDeletions, processPendingDeletionJobs, toDeletionTarget } from './services/deletion';
 
 // Import handlers
 import { uploadSingleHandler } from './handlers/upload';
@@ -43,6 +44,13 @@ const authMiddleware = async (c: Context<{ Bindings: Env }>, next: () => Promise
 
   if (!isValid) {
     return unauthorizedResponse();
+  }
+
+  if (new URL(c.req.url).pathname === '/api/validate-api-key') {
+    c.executionCtx.waitUntil(
+      authService.recordApiKeyUsage(apiKey)
+        .catch((err) => console.error('Failed to record API key usage:', err))
+    );
   }
 
   await next();
@@ -125,30 +133,35 @@ async function scheduledHandler(
   console.log('Cron job started: cleaning up expired images');
 
   const metadata = new MetadataService(env.DB);
-  const storage = new StorageService(env.R2_BUCKET);
+  const cache = new CacheService(env.CACHE_KV);
 
   try {
+    const retriedDeletionJobs = await processPendingDeletionJobs(env);
+    if (retriedDeletionJobs > 0) {
+      console.log(`Retried ${retriedDeletionJobs} pending deletion jobs`);
+    }
+
     const expiredImages = await metadata.getExpiredImages();
     console.log(`Found ${expiredImages.length} expired images`);
 
-    let deletedCount = 0;
+    const deletionTargets = expiredImages.map((image) =>
+      toDeletionTarget(image.id, {
+        original: image.paths.original,
+        webp: image.paths.webp || undefined,
+        avif: image.paths.avif || undefined,
+      })
+    );
 
-    for (const image of expiredImages) {
-      try {
-        // Delete files from R2
-        await storage.deleteImageFiles({
-          original: image.paths.original,
-          webp: image.paths.webp || undefined,
-          avif: image.paths.avif || undefined,
-        });
+    const deletedCount = await metadata.deleteImagesWithDeletionJobs(deletionTargets);
 
-        // Delete metadata from D1
-        await metadata.deleteImage(image.id);
+    if (deletedCount > 0) {
+      await Promise.all([
+        cache.invalidateImagesList(),
+        cache.invalidateTagsList(),
+        cache.invalidateImageDetails(deletionTargets.map((target) => target.id)),
+      ]);
 
-        deletedCount++;
-      } catch (err) {
-        console.error('Failed to delete expired image:', image.id, err);
-      }
+      await dispatchImageDeletions(env, deletionTargets, 'expired');
     }
 
     console.log(`Cron job completed: deleted ${deletedCount} expired images`);

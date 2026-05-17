@@ -38,6 +38,21 @@ export class StorageService {
     await this.deleteMany(keys);
   }
 
+  async deleteImageFilesBatch(items: ImagePaths[]): Promise<void> {
+    const keys = new Set<string>();
+    for (const paths of items) {
+      if (paths.original) keys.add(paths.original);
+      if (paths.webp) keys.add(paths.webp);
+      if (paths.avif) keys.add(paths.avif);
+    }
+
+    const allKeys = Array.from(keys);
+    const chunkSize = 500;
+    for (let i = 0; i < allKeys.length; i += chunkSize) {
+      await this.deleteMany(allKeys.slice(i, i + chunkSize));
+    }
+  }
+
   // Generate storage paths for an image
   static generatePaths(id: string, orientation: 'landscape' | 'portrait', format: string): {
     original: string;

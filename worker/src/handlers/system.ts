@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
 import type { Env, Config } from '../types';
-import { StorageService } from '../services/storage';
 import { MetadataService } from '../services/metadata';
 import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
+import { dispatchImageDeletions, processPendingDeletionJobs, toDeletionTarget } from '../services/deletion';
 import { successResponse, errorResponse } from '../utils/response';
 
 // Default configuration
@@ -68,29 +68,36 @@ export async function configHandler(c: Context<{ Bindings: Env }>): Promise<Resp
 export async function cleanupHandler(c: Context<{ Bindings: Env }>): Promise<Response> {
   try {
     const metadata = new MetadataService(c.env.DB);
-    const storage = new StorageService(c.env.R2_BUCKET);
+    const cache = new CacheService(c.env.CACHE_KV);
+
+    c.executionCtx.waitUntil(
+      processPendingDeletionJobs(c.env)
+        .catch((err) => console.error('Pending deletion retry failed:', err))
+    );
 
     // Get expired images
     const expiredImages = await metadata.getExpiredImages();
+    const deletionTargets = expiredImages.map((image) =>
+      toDeletionTarget(image.id, {
+        original: image.paths.original,
+        webp: image.paths.webp || undefined,
+        avif: image.paths.avif || undefined,
+      })
+    );
 
-    let deletedCount = 0;
+    const deletedCount = await metadata.deleteImagesWithDeletionJobs(deletionTargets);
 
-    for (const image of expiredImages) {
-      try {
-        // Delete files from R2
-        const keysToDelete = [image.paths.original];
-        if (image.paths.webp) keysToDelete.push(image.paths.webp);
-        if (image.paths.avif) keysToDelete.push(image.paths.avif);
+    if (deletedCount > 0) {
+      await Promise.all([
+        cache.invalidateImagesList(),
+        cache.invalidateTagsList(),
+        cache.invalidateImageDetails(deletionTargets.map((target) => target.id)),
+      ]);
 
-        await storage.deleteMany(keysToDelete);
-
-        // Delete metadata
-        await metadata.deleteImage(image.id);
-
-        deletedCount++;
-      } catch (err) {
-        console.error('Failed to delete expired image:', image.id, err);
-      }
+      c.executionCtx.waitUntil(
+        dispatchImageDeletions(c.env, deletionTargets, 'expired')
+          .catch((err) => console.error('Expired image deletion failed:', err))
+      );
     }
 
     return successResponse({ deletedCount });

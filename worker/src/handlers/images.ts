@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
 import type { Env } from '../types';
 import { MetadataService } from '../services/metadata';
-import { StorageService } from '../services/storage';
 import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
+import { dispatchImageDeletions, toDeletionTarget } from '../services/deletion';
 import { successResponse, errorResponse, notFoundResponse } from '../utils/response';
 import { parseNumber, validateOrientation, validateImageListFormat, parseTags, sanitizeTagName, isValidUUID } from '../utils/validation';
 import { buildImageUrls } from '../utils/imageTransform';
@@ -12,6 +12,10 @@ const MAX_IMAGES_PAGE_SIZE = 100;
 function clampInt(value: number, min: number, max: number): number {
   if (!Number.isFinite(value)) return min;
   return Math.max(min, Math.min(max, Math.trunc(value)));
+}
+
+function isExpired(expiryTime?: unknown): boolean {
+  return typeof expiryTime === 'string' && Date.parse(expiryTime) <= Date.now();
 }
 
 // GET /api/images - List images with pagination and filters
@@ -37,7 +41,7 @@ export async function imagesHandler(c: Context<{ Bindings: Env }>): Promise<Resp
       totalPages: number;
     }
     const cached = await cache.get<ImagesListCache>(cacheKey);
-    if (cached) {
+    if (cached && !cached.images.some((image) => isExpired(image.expiryTime))) {
       return successResponse(cached);
     }
 
@@ -97,7 +101,7 @@ export async function imageDetailHandler(c: Context<{ Bindings: Env }>): Promise
       image: Record<string, unknown>;
     }
     const cached = await cache.get<ImageDetailCache>(cacheKey);
-    if (cached) {
+    if (cached && !isExpired(cached.image.expiryTime)) {
       return successResponse(cached);
     }
 
@@ -150,7 +154,7 @@ export async function updateImageHandler(c: Context<{ Bindings: Env }>): Promise
     const metadata = new MetadataService(c.env.DB);
 
     // Build updates object
-    const updates: Record<string, string[] | string | undefined> = {};
+    const updates: { tags?: string[]; expiryTime?: string | null } = {};
 
     if (body.tags !== undefined) {
       if (body.tags === null) {
@@ -168,11 +172,16 @@ export async function updateImageHandler(c: Context<{ Bindings: Env }>): Promise
     }
 
     if (body.expiryMinutes !== undefined) {
-      if (body.expiryMinutes > 0) {
-        const expiry = new Date(Date.now() + body.expiryMinutes * 60 * 1000);
+      const expiryMinutes = Number(body.expiryMinutes);
+      if (!Number.isFinite(expiryMinutes)) {
+        return errorResponse('expiryMinutes must be a number');
+      }
+
+      if (expiryMinutes > 0) {
+        const expiry = new Date(Date.now() + expiryMinutes * 60 * 1000);
         updates.expiryTime = expiry.toISOString();
       } else {
-        updates.expiryTime = undefined;
+        updates.expiryTime = null;
       }
     }
 
@@ -232,8 +241,17 @@ export async function deleteImageHandler(c: Context<{ Bindings: Env }>): Promise
       return notFoundResponse('图片不存在');
     }
 
-    // 1. 同步删除 D1 元数据（保证刷新后不会再看到已删除的图片）
-    await metadataService.deleteImage(id);
+    const deletionTarget = toDeletionTarget(id, {
+      original: image.paths.original,
+      webp: image.paths.webp || undefined,
+      avif: image.paths.avif || undefined,
+    });
+
+    // 1. 同步删除 D1 元数据并持久化 R2 删除任务，保证失败后可重试
+    const deletedCount = await metadataService.deleteImagesWithDeletionJobs([deletionTarget]);
+    if (deletedCount === 0) {
+      return notFoundResponse('图片不存在');
+    }
 
     // 2. 同步失效 KV 缓存（保证其他用户也不会看到已删除的图片）
     const cache = new CacheService(c.env.CACHE_KV);
@@ -242,23 +260,11 @@ export async function deleteImageHandler(c: Context<{ Bindings: Env }>): Promise
       cache.invalidateTagsList(),
     ]);
 
-    // 3. 删除 R2 文件
-    const imagePaths = {
-      original: image.paths.original,
-      webp: image.paths.webp || undefined,
-      avif: image.paths.avif || undefined,
-    };
-
-    if (c.env.USE_QUEUE === 'true' && c.env.DELETE_QUEUE) {
-      await c.env.DELETE_QUEUE.send({
-        type: 'delete_image',
-        imageId: id,
-        paths: imagePaths,
-      });
-    } else {
-      const storage = new StorageService(c.env.R2_BUCKET);
-      await storage.deleteImageFiles(imagePaths);
-    }
+    // 3. R2 文件删除放到后台；失败会保留 deletion_jobs 供 cron/cleanup 重试
+    c.executionCtx.waitUntil(
+      dispatchImageDeletions(c.env, [deletionTarget], id)
+        .catch((err) => console.error('Background R2 deletion failed:', id, err))
+    );
 
     return successResponse({ message: '图片已删除' });
 

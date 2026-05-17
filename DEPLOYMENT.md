@@ -105,6 +105,12 @@ pnpm wrangler queues create cattopic-delete-queue
 pnpm wrangler d1 execute CattoPic-D1 --remote --file=schema.sql
 ```
 
+已有部署升级时，按顺序执行新增迁移：
+
+```bash
+pnpm wrangler d1 execute CattoPic-D1 --remote --file=migrations/0003_deletion_jobs.sql
+```
+
 ### 1.7 配置 wrangler.toml
 
 从模板复制配置文件：
@@ -118,7 +124,7 @@ cp wrangler.example.toml wrangler.toml
 ```toml
 name = 'cattopic-worker'
 main = 'src/index.ts'
-compatibility_date = '2024-12-01'
+compatibility_date = '2025-12-10'
 compatibility_flags = ['nodejs_compat']
 
 [vars]

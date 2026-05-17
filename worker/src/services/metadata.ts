@@ -1,4 +1,22 @@
 import type { ImageMetadata, ImageFilters, Tag, ImageRow } from '../types';
+import type { ImagePaths } from '../types/queue';
+
+export interface ImageDeletionTarget {
+  id: string;
+  paths: ImagePaths;
+}
+
+export interface DeletionJob extends ImageDeletionTarget {
+  attempts: number;
+  lastError?: string;
+}
+
+interface ImageUpdateFields {
+  tags?: string[];
+  expiryTime?: string | null;
+}
+
+const D1_BATCH_CHUNK_SIZE = 80;
 
 // D1 Metadata Service
 export class MetadataService {
@@ -52,9 +70,14 @@ export class MetadataService {
   }
 
   async getImage(id: string): Promise<ImageMetadata | null> {
+    const now = new Date().toISOString();
+
     // Batch: execute image and tags queries in parallel
     const [imageResult, tagsResult] = await this.db.batch([
-      this.db.prepare(`SELECT * FROM images WHERE id = ?`).bind(id),
+      this.db.prepare(`
+        SELECT * FROM images
+        WHERE id = ? AND (expiry_time IS NULL OR expiry_time > ?)
+      `).bind(id, now),
       this.db.prepare(`
         SELECT t.name FROM tags t
         JOIN image_tags it ON t.id = it.tag_id
@@ -69,10 +92,15 @@ export class MetadataService {
     return this.rowToMetadata(image, tags);
   }
 
-  async updateImage(id: string, updates: Partial<ImageMetadata>): Promise<ImageMetadata | null> {
+  async updateImage(id: string, updates: ImageUpdateFields): Promise<ImageMetadata | null> {
+    const now = new Date().toISOString();
+
     // Batch: get image and tags in parallel (avoid separate getImage call)
     const [imageResult, tagsResult] = await this.db.batch([
-      this.db.prepare(`SELECT * FROM images WHERE id = ?`).bind(id),
+      this.db.prepare(`
+        SELECT * FROM images
+        WHERE id = ? AND (expiry_time IS NULL OR expiry_time > ?)
+      `).bind(id, now),
       this.db.prepare(`
         SELECT t.name FROM tags t
         JOIN image_tags it ON t.id = it.tag_id
@@ -89,7 +117,7 @@ export class MetadataService {
     let finalExpiryTime = image.expiry_time;
 
     // Handle tag changes
-    if (updates.tags) {
+    if (updates.tags !== undefined) {
       const oldTags = new Set(currentTags);
       const newTags = new Set(updates.tags);
       finalTags = updates.tags;
@@ -123,7 +151,7 @@ export class MetadataService {
 
     // Update expiry time
     if (updates.expiryTime !== undefined) {
-      finalExpiryTime = updates.expiryTime || null;
+      finalExpiryTime = updates.expiryTime;
       statements.push(
         this.db.prepare(`UPDATE images SET expiry_time = ? WHERE id = ?`)
           .bind(finalExpiryTime, id)
@@ -147,14 +175,113 @@ export class MetadataService {
     return result.success && (result.meta?.changes || 0) > 0;
   }
 
+  async deleteImagesWithDeletionJobs(targets: ImageDeletionTarget[]): Promise<number> {
+    if (targets.length === 0) return 0;
+
+    const createdAt = new Date().toISOString();
+    let deletedCount = 0;
+
+    for (let i = 0; i < targets.length; i += D1_BATCH_CHUNK_SIZE) {
+      const chunk = targets.slice(i, i + D1_BATCH_CHUNK_SIZE);
+      const ids = chunk.map((target) => target.id);
+      const placeholders = ids.map(() => '?').join(',');
+      const statements: D1PreparedStatement[] = chunk.map((target) =>
+        this.db.prepare(`
+          INSERT OR IGNORE INTO deletion_jobs (
+            id, image_id, paths_json, created_at, attempts, last_error
+          ) VALUES (?, ?, ?, ?, 0, NULL)
+        `).bind(
+          crypto.randomUUID(),
+          target.id,
+          JSON.stringify(target.paths),
+          createdAt
+        )
+      );
+
+      statements.push(
+        this.db.prepare(`
+          DELETE FROM images WHERE id IN (${placeholders})
+        `).bind(...ids)
+      );
+
+      const results = await this.db.batch(statements);
+      const deleteResult = results[results.length - 1] as D1Result;
+      deletedCount += deleteResult.meta?.changes || 0;
+    }
+
+    return deletedCount;
+  }
+
+  async completeDeletionJobsForImages(imageIds: string[]): Promise<void> {
+    if (imageIds.length === 0) return;
+
+    for (let i = 0; i < imageIds.length; i += D1_BATCH_CHUNK_SIZE) {
+      const chunk = imageIds.slice(i, i + D1_BATCH_CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(',');
+      await this.db.prepare(`
+        DELETE FROM deletion_jobs WHERE image_id IN (${placeholders})
+      `).bind(...chunk).run();
+    }
+  }
+
+  async recordDeletionJobFailureForImages(imageIds: string[], error: string): Promise<void> {
+    if (imageIds.length === 0) return;
+
+    const failedAt = new Date().toISOString();
+    const lastError = error.slice(0, 500);
+    for (let i = 0; i < imageIds.length; i += D1_BATCH_CHUNK_SIZE) {
+      const chunk = imageIds.slice(i, i + D1_BATCH_CHUNK_SIZE);
+      const placeholders = chunk.map(() => '?').join(',');
+      await this.db.prepare(`
+        UPDATE deletion_jobs
+        SET attempts = attempts + 1,
+            last_error = ?,
+            updated_at = ?
+        WHERE image_id IN (${placeholders})
+      `).bind(lastError, failedAt, ...chunk).run();
+    }
+  }
+
+  async getPendingDeletionJobs(limit = 100): Promise<DeletionJob[]> {
+    const result = await this.db.prepare(`
+      SELECT image_id, paths_json, attempts, last_error
+      FROM deletion_jobs
+      ORDER BY attempts ASC, created_at ASC
+      LIMIT ?
+    `).bind(Math.max(1, Math.min(500, Math.trunc(limit)))).all<{
+      image_id: string;
+      paths_json: string;
+      attempts: number;
+      last_error: string | null;
+    }>();
+
+    const jobs: DeletionJob[] = [];
+    for (const row of result.results || []) {
+      try {
+        const paths = JSON.parse(row.paths_json) as ImagePaths;
+        if (!paths.original) continue;
+        jobs.push({
+          id: row.image_id,
+          paths,
+          attempts: row.attempts,
+          lastError: row.last_error || undefined,
+        });
+      } catch (err) {
+        console.error('Invalid deletion job payload:', row.image_id, err);
+      }
+    }
+
+    return jobs;
+  }
+
   // === Image Queries ===
 
   async getImageIds(orientation?: string): Promise<string[]> {
-    let query = 'SELECT id FROM images';
-    const params: string[] = [];
+    let query = 'SELECT id FROM images WHERE (expiry_time IS NULL OR expiry_time > ?)';
+    const params: string[] = [new Date().toISOString()];
 
     if (orientation) {
-      query += ' WHERE orientation = ?';
+      query += ' AND orientation = ?';
       params.push(orientation);
     }
 
@@ -169,8 +296,8 @@ export class MetadataService {
     const offset = (page - 1) * limit;
 
     let baseQuery = 'FROM images i';
-    const whereConditions: string[] = [];
-    const params: (string | number)[] = [];
+    const whereConditions: string[] = ['(i.expiry_time IS NULL OR i.expiry_time > ?)'];
+    const params: (string | number)[] = [new Date().toISOString()];
 
     if (tag) {
       baseQuery += ' JOIN image_tags it ON i.id = it.image_id JOIN tags t ON it.tag_id = t.id';
@@ -233,12 +360,12 @@ export class MetadataService {
     // Build base query and conditions
     const hasTagFilter = filters?.tags?.length;
     const hasExcludeFilter = filters?.exclude?.length;
-    const joinClause = hasTagFilter || hasExcludeFilter
+    const joinClause = hasTagFilter
       ? 'JOIN image_tags it ON i.id = it.image_id JOIN tags t ON it.tag_id = t.id'
       : '';
 
-    const whereConditions: string[] = [];
-    const params: (string | number)[] = [];
+    const whereConditions: string[] = ['(i.expiry_time IS NULL OR i.expiry_time > ?)'];
+    const params: (string | number)[] = [new Date().toISOString()];
 
     // Tag filter (AND logic)
     if (hasTagFilter) {
@@ -294,15 +421,18 @@ export class MetadataService {
 
   async getAllTags(options?: { limit?: number }): Promise<Tag[]> {
     const limit = options?.limit ?? 1000; // Sensible default to prevent unbounded queries
+    const now = new Date().toISOString();
 
     const result = await this.db.prepare(`
-      SELECT t.name, COUNT(it.image_id) as count
+      SELECT t.name, COUNT(i.id) as count
       FROM tags t
       LEFT JOIN image_tags it ON t.id = it.tag_id
+      LEFT JOIN images i ON it.image_id = i.id
+        AND (i.expiry_time IS NULL OR i.expiry_time > ?)
       GROUP BY t.id, t.name
       ORDER BY t.name
       LIMIT ?
-    `).bind(limit).all<{ name: string; count: number }>();
+    `).bind(now, limit).all<{ name: string; count: number }>();
 
     return result.results || [];
   }
@@ -314,11 +444,15 @@ export class MetadataService {
   }
 
   async renameTag(oldName: string, newName: string): Promise<number> {
+    const now = new Date().toISOString();
+
     // Get count of affected images
     const countResult = await this.db.prepare(`
-      SELECT COUNT(*) as count FROM image_tags it
-      JOIN tags t ON it.tag_id = t.id WHERE t.name = ?
-    `).bind(oldName).first<{ count: number }>();
+      SELECT COUNT(i.id) as count FROM image_tags it
+      JOIN tags t ON it.tag_id = t.id
+      JOIN images i ON it.image_id = i.id
+      WHERE t.name = ? AND (i.expiry_time IS NULL OR i.expiry_time > ?)
+    `).bind(oldName, now).first<{ count: number }>();
 
     // Rename the tag
     await this.db.prepare(`
@@ -344,12 +478,14 @@ export class MetadataService {
   }
 
   async getImagesByTag(tagName: string): Promise<ImageMetadata[]> {
+    const now = new Date().toISOString();
+
     const result = await this.db.prepare(`
       SELECT i.* FROM images i
       JOIN image_tags it ON i.id = it.image_id
       JOIN tags t ON it.tag_id = t.id
-      WHERE t.name = ?
-    `).bind(tagName).all<ImageRow>();
+      WHERE t.name = ? AND (i.expiry_time IS NULL OR i.expiry_time > ?)
+    `).bind(tagName, now).all<ImageRow>();
 
     return this.enrichWithTags(result.results || []);
   }
@@ -393,23 +529,18 @@ export class MetadataService {
    * Delete a tag and all images associated with it.
    * Uses subqueries to avoid exceeding SQLite/D1 variable limits.
    */
-  async deleteTagWithImages(name: string): Promise<{ deletedImages: number }> {
-    const deleteImagesResult = await this.db.prepare(`
-      DELETE FROM images
-      WHERE id IN (
-        SELECT it.image_id
-        FROM image_tags it
-        JOIN tags t ON it.tag_id = t.id
-        WHERE t.name = ?
-      )
-    `).bind(name).run();
+  async deleteTagWithImages(
+    name: string,
+    targets: ImageDeletionTarget[]
+  ): Promise<{ deletedImages: number }> {
+    const deletedImages = await this.deleteImagesWithDeletionJobs(targets);
 
-    // Delete the tag itself (CASCADE cleans up any remaining image_tags)
+    // Delete the tag itself (CASCADE cleans up any remaining image_tags).
     await this.db.prepare(`
       DELETE FROM tags WHERE name = ?
     `).bind(name).run();
 
-    return { deletedImages: deleteImagesResult.meta?.changes || 0 };
+    return { deletedImages };
   }
 
   async batchUpdateTags(imageIds: string[], addTags: string[], removeTags: string[]): Promise<number> {
@@ -429,31 +560,35 @@ export class MetadataService {
       await this.db.batch(statements);
     }
 
-    // 2. Bulk remove: single DELETE with IN clauses (instead of N*M individual DELETEs)
-    if (removeTags.length > 0) {
-      const imgPlaceholders = imageIds.map(() => '?').join(',');
-      const tagPlaceholders = removeTags.map(() => '?').join(',');
-      await this.db.prepare(`
-        DELETE FROM image_tags
-        WHERE image_id IN (${imgPlaceholders})
-        AND tag_id IN (SELECT id FROM tags WHERE name IN (${tagPlaceholders}))
-      `).bind(...imageIds, ...removeTags).run();
-    }
+    for (let i = 0; i < imageIds.length; i += D1_BATCH_CHUNK_SIZE) {
+      const chunk = imageIds.slice(i, i + D1_BATCH_CHUNK_SIZE);
 
-    // 3. Bulk add: single INSERT for each tag across all images
-    if (addTags.length > 0) {
-      const addStatements: D1PreparedStatement[] = [];
-      for (const tag of addTags) {
-        // For each tag, insert associations for all imageIds at once
-        addStatements.push(
-          this.db.prepare(`
-            INSERT OR IGNORE INTO image_tags (image_id, tag_id)
-            SELECT image_id, (SELECT id FROM tags WHERE name = ?)
-            FROM (SELECT ? AS image_id ${imageIds.slice(1).map(() => 'UNION ALL SELECT ?').join(' ')})
-          `).bind(tag, ...imageIds)
-        );
+      // 2. Bulk remove within D1 variable limits.
+      if (removeTags.length > 0) {
+        const imgPlaceholders = chunk.map(() => '?').join(',');
+        const tagPlaceholders = removeTags.map(() => '?').join(',');
+        await this.db.prepare(`
+          DELETE FROM image_tags
+          WHERE image_id IN (${imgPlaceholders})
+          AND tag_id IN (SELECT id FROM tags WHERE name IN (${tagPlaceholders}))
+        `).bind(...chunk, ...removeTags).run();
       }
-      await this.db.batch(addStatements);
+
+      // 3. Bulk add: one INSERT per tag and image chunk.
+      if (addTags.length > 0) {
+        const addStatements: D1PreparedStatement[] = [];
+        const imageUnion = `SELECT ? AS image_id ${chunk.slice(1).map(() => 'UNION ALL SELECT ?').join(' ')}`;
+        for (const tag of addTags) {
+          addStatements.push(
+            this.db.prepare(`
+              INSERT OR IGNORE INTO image_tags (image_id, tag_id)
+              SELECT image_id, (SELECT id FROM tags WHERE name = ?)
+              FROM (${imageUnion})
+            `).bind(tag, ...chunk)
+          );
+        }
+        await this.db.batch(addStatements);
+      }
     }
 
     return imageIds.length;
@@ -461,12 +596,14 @@ export class MetadataService {
 
   // === Cleanup ===
 
-  async getExpiredImages(): Promise<ImageMetadata[]> {
+  async getExpiredImages(limit = 100): Promise<ImageMetadata[]> {
     const now = new Date().toISOString();
 
     const result = await this.db.prepare(`
       SELECT * FROM images WHERE expiry_time IS NOT NULL AND expiry_time < ?
-    `).bind(now).all<ImageRow>();
+      ORDER BY expiry_time ASC
+      LIMIT ?
+    `).bind(now, Math.max(1, Math.min(500, Math.trunc(limit)))).all<ImageRow>();
 
     return this.enrichWithTags(result.results || []);
   }
