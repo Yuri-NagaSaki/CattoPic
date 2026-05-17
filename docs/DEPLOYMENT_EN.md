@@ -107,8 +107,6 @@ pnpm wrangler d1 execute CattoPic-D1 --remote --file=schema.sql
 
 Existing deployments do not require manual migration commands; the Worker automatically creates the new deletion job table through the D1 binding.
 
-The deploy workflow syncs the GitHub Actions Secret `CATTOPIC_API_KEY` as a Worker Secret, then persists it to D1 on first use.
-
 ### 1.7 Configure wrangler.toml
 
 Copy the template configuration file:

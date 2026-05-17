@@ -107,8 +107,6 @@ pnpm wrangler d1 execute CattoPic-D1 --remote --file=schema.sql
 
 已有部署升级时无需手动执行迁移；Worker 会通过 D1 binding 自动补齐新增的删除任务表。
 
-部署 workflow 会把 GitHub Actions Secret `CATTOPIC_API_KEY` 同步为 Worker Secret，并在首次使用时自动写入 D1。
-
 ### 1.7 配置 wrangler.toml
 
 从模板复制配置文件：

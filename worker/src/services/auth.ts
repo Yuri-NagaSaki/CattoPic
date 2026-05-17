@@ -2,22 +2,6 @@
 export class AuthService {
   constructor(private db: D1Database) {}
 
-  static timingSafeEqual(a: string, b: string | undefined): boolean {
-    if (!b) return false;
-
-    const encoder = new TextEncoder();
-    const aBytes = encoder.encode(a);
-    const bBytes = encoder.encode(b);
-    const length = Math.max(aBytes.length, bBytes.length);
-    let diff = aBytes.length ^ bBytes.length;
-
-    for (let i = 0; i < length; i++) {
-      diff |= (aBytes[i] || 0) ^ (bBytes[i] || 0);
-    }
-
-    return diff === 0;
-  }
-
   async validateApiKey(key: string): Promise<boolean> {
     if (!key) return false;
 
