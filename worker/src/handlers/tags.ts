@@ -6,8 +6,16 @@ import { CacheService, CacheKeys, CACHE_TTL } from '../services/cache';
 import { successResponse, errorResponse } from '../utils/response';
 import { sanitizeTagName } from '../utils/validation';
 
-function normalizeTagRouteParam(raw: string): string | null {
-  const decoded = decodeURIComponent(raw);
+function normalizeTagRouteParam(raw: string | undefined): string | null {
+  if (!raw) return null;
+
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(raw);
+  } catch {
+    return null;
+  }
+
   const normalized = sanitizeTagName(decoded);
   if (!normalized) return null;
 

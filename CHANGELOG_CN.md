@@ -35,6 +35,8 @@
 
 ### 修复
 
+- 修复 Dependabot lockfile 漂移导致 Vercel frozen install 失败的问题：根目录 `dotenv` 的 manifest specifier 现在与 `pnpm-lock.yaml` 保持一致。
+- Worker 处理器在调用元数据/缓存服务前，会先校验缺失或格式错误的图片/标签路由参数。
 - 修复 WebP 和 AVIF 图片的方向检测 - 现在会正确读取图片实际尺寸，而不是默认返回 1920x1080。
 - 修复删除图片后上传页/管理页未及时刷新（TanStack Query 缓存 + recent uploads 列表导致需强刷）。
 - 修复管理页「随机图 API 生成器」未能正确解析真实 API Base URL（改为从 `/api/config` 获取），仍输出占位链接 `https://your-worker.workers.dev` 的问题。
@@ -48,4 +50,5 @@
 
 ### 安全
 
+- 更新存在安全风险的传递依赖 lockfile 条目：`ajv`、`brace-expansion`、`flatted`、`minimatch`、`picomatch`、`postcss` 以及 Worker 侧的 `undici`。
 - 收紧标签清洗规则，避免标签管理相关接口出现意外字符输入。

@@ -85,7 +85,7 @@ export async function imageDetailHandler(c: Context<{ Bindings: Env }>): Promise
   try {
     const id = c.req.param('id');
 
-    if (!isValidUUID(id)) {
+    if (!id || !isValidUUID(id)) {
       return errorResponse('无效的图片ID');
     }
 
@@ -142,7 +142,7 @@ export async function updateImageHandler(c: Context<{ Bindings: Env }>): Promise
   try {
     const id = c.req.param('id');
 
-    if (!isValidUUID(id)) {
+    if (!id || !isValidUUID(id)) {
       return errorResponse('无效的图片ID');
     }
 
@@ -221,7 +221,7 @@ export async function deleteImageHandler(c: Context<{ Bindings: Env }>): Promise
   try {
     const id = c.req.param('id');
 
-    if (!isValidUUID(id)) {
+    if (!id || !isValidUUID(id)) {
       return errorResponse('无效的图片ID');
     }
 

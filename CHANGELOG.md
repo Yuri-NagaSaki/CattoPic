@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- Fix Dependabot lockfile drift that made Vercel frozen installs fail when the root `dotenv` manifest specifier did not match `pnpm-lock.yaml`.
+- Validate missing or malformed image/tag route parameters before Worker handlers call metadata/cache services.
 - Fix orientation detection for WebP and AVIF images - now correctly reads actual image dimensions instead of defaulting to 1920x1080.
 - Fix deleted images not disappearing from Upload/Manage pages without a hard refresh (TanStack Query cache + recent uploads list).
 - Fix Manage page Random API generator to resolve the real API base URL (via `/api/config`) instead of the placeholder `https://your-worker.workers.dev`.
@@ -48,4 +50,5 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Security
 
+- Update vulnerable transitive dependency lockfile entries for `ajv`, `brace-expansion`, `flatted`, `minimatch`, `picomatch`, `postcss`, and Worker-side `undici`.
 - Tighten tag sanitization to avoid unexpected characters in tag management endpoints.
