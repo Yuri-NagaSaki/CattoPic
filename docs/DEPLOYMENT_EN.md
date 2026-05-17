@@ -35,7 +35,7 @@
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) >= 18
+- [Node.js](https://nodejs.org/) >= 24
 - [pnpm](https://pnpm.io/) package manager
 - [Cloudflare account](https://dash.cloudflare.com/)
 - [Vercel account](https://vercel.com/)

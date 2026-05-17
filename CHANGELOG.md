@@ -23,6 +23,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Expired image cleanup now records durable R2 deletion jobs and runs file deletion in the background, with retry support from Cron/manual cleanup.
 - Worker deployment workflow now uses pnpm 10.24.0 to match the Worker package manager and lockfile generation.
 - Worker deployment now runs the D1 `deletion_jobs` migration automatically and can upsert the production API key from a GitHub Actions secret.
+- Worker deployment now runs on Node.js 24 to support the current Wrangler/Undici toolchain.
 - Use Cloudflare Transform Images URL (`/cdn-cgi/image/...`) as a fallback WebP/AVIF delivery method when stored variants are missing (e.g. uploads over 10MB).
 - `/api/random` now redirects (302) to the selected image URL instead of proxying the image bytes (more reliable for transformed variants).
 - Disable Next.js image optimization since images are already delivered as transformed URLs.

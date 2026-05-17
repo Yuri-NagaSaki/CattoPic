@@ -35,7 +35,7 @@
 
 ## 前置条件
 
-- [Node.js](https://nodejs.org/) >= 18
+- [Node.js](https://nodejs.org/) >= 24
 - [pnpm](https://pnpm.io/) 包管理器
 - [Cloudflare 账户](https://dash.cloudflare.com/)
 - [Vercel 账户](https://vercel.com/)

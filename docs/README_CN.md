@@ -100,7 +100,7 @@ flowchart TB
 
 ### 前置条件
 
-- Node.js >= 18
+- Node.js >= 24
 - [pnpm](https://pnpm.io/) 包管理器
 - [Cloudflare 账户](https://dash.cloudflare.com/)
 - [Vercel 账户](https://vercel.com/)（或其他静态托管服务）

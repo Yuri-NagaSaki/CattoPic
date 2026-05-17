@@ -100,7 +100,7 @@ flowchart TB
 
 ### Prerequisites
 
-- Node.js >= 18
+- Node.js >= 24
 - [pnpm](https://pnpm.io/) package manager
 - [Cloudflare account](https://dash.cloudflare.com/)
 - [Vercel account](https://vercel.com/) (or any static hosting)
@@ -299,5 +299,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8787
 ## License
 
 [GPL-3.0](./LICENSE)
-
 
