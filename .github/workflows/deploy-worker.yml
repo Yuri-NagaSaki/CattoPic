@@ -13,6 +13,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     name: Deploy to Cloudflare Workers
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CATTOPIC_API_KEY: ${{ secrets.CATTOPIC_API_KEY }}
 
     steps:
       - name: Checkout
@@ -31,7 +35,7 @@ jobs:
           cache-dependency-path: worker/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
         working-directory: worker
 
       - name: Generate wrangler.toml
@@ -40,11 +44,24 @@ jobs:
           WRANGLER_TOML_CONTENT: ${{ secrets.WRANGLER_TOML }}
         run: printf '%s\n' "$WRANGLER_TOML_CONTENT" > wrangler.toml
 
+      - name: Typecheck Worker
+        working-directory: worker
+        run: pnpm exec tsc --noEmit
+
+      - name: Apply D1 migrations
+        working-directory: worker
+        run: pnpm wrangler d1 execute DB --remote --file=migrations/0003_deletion_jobs.sql
+
+      - name: Ensure production API key
+        if: env.CATTOPIC_API_KEY != ''
+        working-directory: worker
+        run: |
+          node scripts/write-api-key-sql.mjs /tmp/cattopic-api-key.sql
+          pnpm wrangler d1 execute DB --remote --file=/tmp/cattopic-api-key.sql
+          rm -f /tmp/cattopic-api-key.sql
+
       - name: Deploy to Cloudflare
         working-directory: worker
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          pnpm wrangler deploy > /dev/null 2>&1
+          pnpm wrangler deploy
           echo "✅ Deploy completed"
