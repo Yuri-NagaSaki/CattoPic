@@ -47,10 +47,6 @@ jobs:
         working-directory: worker
         run: pnpm exec tsc --noEmit
 
-      - name: Remove legacy API key secret
-        working-directory: worker
-        run: pnpm wrangler secret delete CATTOPIC_API_KEY --name cattopic-worker || true
-
       - name: Deploy to Cloudflare
         working-directory: worker
         run: |
