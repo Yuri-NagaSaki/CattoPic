@@ -48,17 +48,10 @@ jobs:
         working-directory: worker
         run: pnpm exec tsc --noEmit
 
-      - name: Apply D1 migrations
-        working-directory: worker
-        run: pnpm wrangler d1 execute DB --remote --file=migrations/0003_deletion_jobs.sql
-
-      - name: Ensure production API key
+      - name: Sync production API key secret
         if: env.CATTOPIC_API_KEY != ''
         working-directory: worker
-        run: |
-          node scripts/write-api-key-sql.mjs /tmp/cattopic-api-key.sql
-          pnpm wrangler d1 execute DB --remote --file=/tmp/cattopic-api-key.sql
-          rm -f /tmp/cattopic-api-key.sql
+        run: printf '%s' "$CATTOPIC_API_KEY" | pnpm wrangler secret put CATTOPIC_API_KEY
 
       - name: Deploy to Cloudflare
         working-directory: worker

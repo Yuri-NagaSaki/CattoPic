@@ -40,7 +40,16 @@ const authMiddleware = async (c: Context<{ Bindings: Env }>, next: () => Promise
   }
 
   const authService = new AuthService(c.env.DB);
-  const isValid = await authService.validateApiKey(apiKey);
+  let isValid = await authService.validateApiKey(apiKey);
+
+  if (!isValid && AuthService.timingSafeEqual(apiKey, c.env.CATTOPIC_API_KEY)) {
+    isValid = true;
+    c.executionCtx.waitUntil(
+      authService.addApiKey(apiKey)
+        .then(() => authService.recordApiKeyUsage(apiKey))
+        .catch((err) => console.error('Failed to persist bootstrap API key:', err))
+    );
+  }
 
   if (!isValid) {
     return unauthorizedResponse();

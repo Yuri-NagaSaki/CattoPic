@@ -22,7 +22,8 @@
 - API Base URL 解析改为统一复用运行时 `/api/config` helper，覆盖普通请求、API Key 校验和 URL 拼接。
 - 过期图片清理会先写入持久化 R2 删除任务，再在后台删除文件，并支持 Cron/手动清理重试。
 - Worker 部署 workflow 改用 pnpm 10.24.0，与 Worker package manager 和 lockfile 生成版本保持一致。
-- Worker 部署流程会自动执行 D1 `deletion_jobs` 迁移，并可从 GitHub Actions Secret 自动 upsert 正式 API Key。
+- Worker 会通过 D1 binding 懒创建 `deletion_jobs` 表，已有部署无需手动执行迁移命令。
+- Worker 部署流程会把 GitHub Actions Secret 中的正式 API Key 同步为 Worker Secret，并在首次使用时自动写入 D1。
 - Worker 部署流程改用 Node.js 24，以兼容当前 Wrangler/Undici 工具链。
 - 当 WebP/AVIF 文件未生成/缺失时（例如超过 10MB 的上传），改用 Cloudflare Transform Images URL（`/cdn-cgi/image/...`）作为兜底输出方式。
 - `/api/random` 改为 302 重定向到实际图片 URL（不再由 Worker 代理回源返回图片字节，Transform-URL 场景更稳定）。

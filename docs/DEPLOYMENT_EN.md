@@ -105,11 +105,9 @@ pnpm wrangler queues create cattopic-delete-queue
 pnpm wrangler d1 execute CattoPic-D1 --remote --file=schema.sql
 ```
 
-For existing deployments, run new migrations in order:
+Existing deployments do not require manual migration commands; the Worker automatically creates the new deletion job table through the D1 binding.
 
-```bash
-pnpm wrangler d1 execute CattoPic-D1 --remote --file=migrations/0003_deletion_jobs.sql
-```
+The deploy workflow syncs the GitHub Actions Secret `CATTOPIC_API_KEY` as a Worker Secret, then persists it to D1 on first use.
 
 ### 1.7 Configure wrangler.toml
 

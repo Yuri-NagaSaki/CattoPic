@@ -22,6 +22,26 @@ const D1_BATCH_CHUNK_SIZE = 80;
 export class MetadataService {
   constructor(private db: D1Database) {}
 
+  private async ensureDeletionJobsSchema(): Promise<void> {
+    await this.db.batch([
+      this.db.prepare(`
+        CREATE TABLE IF NOT EXISTS deletion_jobs (
+          id TEXT PRIMARY KEY,
+          image_id TEXT NOT NULL UNIQUE,
+          paths_json TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          updated_at TEXT,
+          attempts INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT
+        )
+      `),
+      this.db.prepare(`
+        CREATE INDEX IF NOT EXISTS idx_deletion_jobs_created_at
+        ON deletion_jobs(attempts, created_at)
+      `),
+    ]);
+  }
+
   // === Image CRUD ===
 
   async saveImage(metadata: ImageMetadata): Promise<void> {
@@ -178,6 +198,8 @@ export class MetadataService {
   async deleteImagesWithDeletionJobs(targets: ImageDeletionTarget[]): Promise<number> {
     if (targets.length === 0) return 0;
 
+    await this.ensureDeletionJobsSchema();
+
     const createdAt = new Date().toISOString();
     let deletedCount = 0;
 
@@ -215,6 +237,8 @@ export class MetadataService {
   async completeDeletionJobsForImages(imageIds: string[]): Promise<void> {
     if (imageIds.length === 0) return;
 
+    await this.ensureDeletionJobsSchema();
+
     for (let i = 0; i < imageIds.length; i += D1_BATCH_CHUNK_SIZE) {
       const chunk = imageIds.slice(i, i + D1_BATCH_CHUNK_SIZE);
       const placeholders = chunk.map(() => '?').join(',');
@@ -226,6 +250,8 @@ export class MetadataService {
 
   async recordDeletionJobFailureForImages(imageIds: string[], error: string): Promise<void> {
     if (imageIds.length === 0) return;
+
+    await this.ensureDeletionJobsSchema();
 
     const failedAt = new Date().toISOString();
     const lastError = error.slice(0, 500);
@@ -243,6 +269,8 @@ export class MetadataService {
   }
 
   async getPendingDeletionJobs(limit = 100): Promise<DeletionJob[]> {
+    await this.ensureDeletionJobsSchema();
+
     const result = await this.db.prepare(`
       SELECT image_id, paths_json, attempts, last_error
       FROM deletion_jobs

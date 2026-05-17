@@ -72,6 +72,7 @@ export interface Env {
   IMAGES?: ImagesBinding;
   DELETE_QUEUE?: Queue<QueueMessage>;
   USE_QUEUE?: string;
+  CATTOPIC_API_KEY?: string;
 }
 
 // D1 row type for images table
