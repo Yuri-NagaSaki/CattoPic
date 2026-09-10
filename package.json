@@ -16,7 +16,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.90.12",
     "@tanstack/react-virtual": "^3.13.13",
-    "hono": "^4.12.27",
+    "hono": "^4.13.5",
     "jszip": "^3.10.1",
     "lucide-react": "^0.487.0",
     "motion": "^12.23.25",
